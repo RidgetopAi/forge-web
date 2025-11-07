@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Forge Live - Simple Test</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #log {
+            background: #111;
+            padding: 20px;
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #00d4ff; }
+    </style>
+</head>
+<body>
+    <h1>The Forge Live - Diagnostic Test</h1>
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+
+        function addLog(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(line);
+            console.log(message);
+        }
+
+        async function runTests() {
+            addLog('=== Starting Diagnostic Tests ===', 'info');
+
+            // Test 1: Check location
+            addLog(`Current URL: ${window.location.href}`, 'info');
+            addLog(`Protocol: ${window.location.protocol}`, 'info');
+
+            if (window.location.protocol === 'file:') {
+                addLog('⚠️ WARNING: Running on file:// protocol - CORS will block fetch!', 'error');
+                addLog('Solution: Use http://localhost:8888/index-simple.html instead', 'info');
+            }
+
+            // Test 2: Try to fetch contexts.json
+            addLog('\n--- Test: Loading contexts.json ---', 'info');
+            try {
+                const response = await fetch('./data/contexts.json');
+                addLog(`✓ Fetch succeeded: ${response.status} ${response.statusText}`, 'success');
+
+                addLog('Parsing JSON...', 'info');
+                const data = await response.json();
+
+                addLog(`✓ JSON parsed successfully!`, 'success');
+                addLog(`  - Total contexts: ${data.contexts.length}`, 'success');
+                addLog(`  - Total projects: ${data.metadata.projects.length}`, 'success');
+                addLog(`  - Sample context keys: ${Object.keys(data.contexts[0]).join(', ')}`, 'success');
+
+                // Test 3: Check vector coordinates
+                addLog('\n--- Test: Vector Coordinates ---', 'info');
+                const sample = data.contexts[0];
+                addLog(`Sample context vector: (${sample.vector_x}, ${sample.vector_y}, ${sample.vector_z})`, 'success');
+
+                // Test 4: Calculate some stats
+                const xCoords = data.contexts.map(c => c.vector_x);
+                const yCoords = data.contexts.map(c => c.vector_y);
+                const zCoords = data.contexts.map(c => c.vector_z);
+
+                addLog(`X range: ${Math.min(...xCoords).toFixed(2)} to ${Math.max(...xCoords).toFixed(2)}`, 'info');
+                addLog(`Y range: ${Math.min(...yCoords).toFixed(2)} to ${Math.max(...yCoords).toFixed(2)}`, 'info');
+                addLog(`Z range: ${Math.min(...zCoords).toFixed(2)} to ${Math.max(...zCoords).toFixed(2)}`, 'info');
+
+                addLog('\n✅ ALL TESTS PASSED! Data is ready for visualization.', 'success');
+                addLog('You can proceed to the full visualization now.', 'success');
+
+            } catch (error) {
+                addLog(`✗ Error loading data: ${error.message}`, 'error');
+                addLog(`Error type: ${error.constructor.name}`, 'error');
+                addLog(`Stack: ${error.stack}`, 'error');
+
+                if (window.location.protocol === 'file:') {
+                    addLog('\n🔧 FIX: Start local server with:', 'info');
+                    addLog('  cd ~/aidis/projects/forge-live/forge-web', 'info');
+                    addLog('  python3 -m http.server 8888', 'info');
+                    addLog('  Then open: http://localhost:8888/index-simple.html', 'info');
+                }
+            }
+        }
+
+        // Run tests on load
+        runTests();
+    </script>
+</body>
+</html>

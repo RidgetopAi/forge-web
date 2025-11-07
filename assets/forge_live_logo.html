@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Live Logo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #0a0e27;
+            font-family: 'Courier New', monospace;
+        }
+
+        .logo-container {
+            position: relative;
+            display: flex;
+            gap: 8px;
+            padding: 40px;
+        }
+
+        .tile {
+            width: 120px;
+            height: 120px;
+            background: rgba(79, 70, 229, 0.15);
+            border: 2px solid rgba(99, 102, 241, 0.6);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            backdrop-filter: blur(10px);
+            box-shadow: 
+                0 0 20px rgba(99, 102, 241, 0.3),
+                inset 0 0 20px rgba(99, 102, 241, 0.1);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        .tile:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .tile:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 
+                    0 0 20px rgba(99, 102, 241, 0.3),
+                    inset 0 0 20px rgba(99, 102, 241, 0.1);
+                border-color: rgba(99, 102, 241, 0.6);
+            }
+            50% {
+                box-shadow: 
+                    0 0 30px rgba(99, 102, 241, 0.5),
+                    inset 0 0 30px rgba(99, 102, 241, 0.2);
+                border-color: rgba(99, 102, 241, 0.9);
+            }
+        }
+
+        .atomic-number {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            font-size: 12px;
+            color: rgba(139, 92, 246, 0.8);
+            font-weight: bold;
+        }
+
+        .element-symbol {
+            font-size: 56px;
+            font-weight: bold;
+            color: #818cf8;
+            text-shadow: 
+                0 0 10px rgba(129, 140, 248, 0.8),
+                0 0 20px rgba(129, 140, 248, 0.4);
+            letter-spacing: -2px;
+        }
+
+        .element-name {
+            position: absolute;
+            bottom: 8px;
+            font-size: 11px;
+            color: rgba(165, 180, 252, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: rgba(165, 180, 252, 0.6);
+            letter-spacing: 3px;
+            white-space: nowrap;
+        }
+
+        /* Grid pattern overlay */
+        .tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px),
+                linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* Corner accents */
+        .tile::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            width: 15px;
+            height: 15px;
+            border-top: 2px solid rgba(139, 92, 246, 0.8);
+            border-left: 2px solid rgba(139, 92, 246, 0.8);
+            border-radius: 8px 0 0 0;
+        }
+
+        .corner-br {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 15px;
+            height: 15px;
+            border-bottom: 2px solid rgba(139, 92, 246, 0.8);
+            border-right: 2px solid rgba(139, 92, 246, 0.8);
+            border-radius: 0 0 8px 0;
+        }
+
+        /* Variants for different sizes */
+        .logo-small {
+            transform: scale(0.5);
+        }
+
+        .logo-medium {
+            transform: scale(0.75);
+        }
+
+        /* Export ready versions */
+        .export-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 30, 50, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .export-container button {
+            display: block;
+            margin: 5px 0;
+            padding: 8px 15px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            color: #818cf8;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .export-container button:hover {
+            background: rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="logo-container">
+        <div class="tile">
+            <div class="atomic-number">46</div>
+            <div class="element-symbol">F</div>
+            <div class="element-name">FORGE</div>
+            <div class="corner-br"></div>
+        </div>
+        <div class="tile">
+            <div class="atomic-number">71</div>
+            <div class="element-symbol">L</div>
+            <div class="element-name">LIVE</div>
+            <div class="corner-br"></div>
+        </div>
+        <div class="subtitle">STREAMING AI DEVELOPMENT</div>
+    </div>
+
+    <div class="export-container">
+        <div style="color: #818cf8; margin-bottom: 10px; font-size: 12px;">EXPORT READY</div>
+        <button onclick="alert('Right-click and Save As to export at current resolution')">💾 Save as Image</button>
+        <button onclick="document.querySelector('.logo-container').classList.toggle('logo-small')">📏 Toggle Small</button>
+        <button onclick="document.querySelector('.logo-container').classList.toggle('logo-medium')">📐 Toggle Medium</button>
+    </div>
+
+    <script>
+        // Add some extra ambient animation
+        setInterval(() => {
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(tile => {
+                const brightness = 0.15 + Math.random() * 0.05;
+                tile.style.background = `rgba(79, 70, 229, ${brightness})`;
+            });
+        }, 3000);
+    </script>
+</body>
+</html>

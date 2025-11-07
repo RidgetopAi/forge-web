@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.*
+
+# Markdown files except README
+*.md
+!README.md
+
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

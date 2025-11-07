@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Forge Live - Knowledge Graph Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(0, 212, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .loading-progress {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00f5d4 0%, #00d4ff 25%, #0ea5e9 50%, #7c3aed 75%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #64748b;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+        }
+
+        .stats {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: #64748b;
+            backdrop-filter: blur(15px);
+            min-width: 200px;
+        }
+
+        .stats .stat-row {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .stats .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stats .stat-label {
+            color: #64748b;
+        }
+
+        .stats .stat-value {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading Knowledge Graph</div>
+        <div class="loading-progress">Initializing...</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="overlay">
+        <h1 class="title">The Forge Live</h1>
+        <p class="subtitle" id="subtitle">Loading...</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-row">
+            <span class="stat-label">Contexts:</span>
+            <span class="stat-value" id="context-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Connections:</span>
+            <span class="stat-value" id="connection-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Particles:</span>
+            <span class="stat-value" id="particle-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">FPS:</span>
+            <span class="stat-value" id="fps-count">60</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size with DPR for crisp rendering
+        const dpr = Math.min(window.devicePixelRatio, 1.5);
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            ctx.scale(dpr, dpr);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Color palette
+        const colors = [
+            '#00d4ff', // cyan
+            '#10b981', // green
+            '#ec4899', // pink
+            '#f59e0b', // orange
+            '#7c3aed', // purple
+            '#00f5d4', // teal
+            '#0ea5e9', // blue
+            '#fbbf24', // yellow
+        ];
+
+        // Node class
+        class Node {
+            constructor(x, y, z, color, cluster) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.baseX = x;
+                this.baseY = y;
+                this.baseZ = z;
+                this.baseColor = color;
+                this.color = color;
+                this.cluster = cluster;
+                this.size = 3 + Math.random() * 2;
+                this.baseSize = this.size;
+                this.pulseOffset = Math.random() * Math.PI * 2;
+                this.connections = [];
+                this.colorInfluences = [];
+                this.recentArrivals = [];
+                this.arrivalWindow = 200;
+            }
+
+            addColorInfluence(particleColor, strength = 0.8) {
+                this.colorInfluences.push({
+                    color: particleColor,
+                    strength: strength,
+                    decay: 0.02
+                });
+            }
+
+            registerArrival(particleColor) {
+                const now = Date.now();
+                this.recentArrivals = this.recentArrivals.filter(
+                    arrival => now - arrival.timestamp < this.arrivalWindow
+                );
+                this.recentArrivals.push({ color: particleColor, timestamp: now });
+                return Math.min(this.recentArrivals.length / 2, 2.5);
+            }
+
+            mixColors(color1, color2, weight) {
+                const r1 = parseInt(color1.slice(1, 3), 16);
+                const g1 = parseInt(color1.slice(3, 5), 16);
+                const b1 = parseInt(color1.slice(5, 7), 16);
+                const r2 = parseInt(color2.slice(1, 3), 16);
+                const g2 = parseInt(color2.slice(3, 5), 16);
+                const b2 = parseInt(color2.slice(5, 7), 16);
+                const r = Math.round(r1 * (1 - weight) + r2 * weight);
+                const g = Math.round(g1 * (1 - weight) + g2 * weight);
+                const b = Math.round(b1 * (1 - weight) + b2 * weight);
+                return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            }
+
+            update(time, focusX, focusY) {
+                // Gentle floating motion
+                this.x = this.baseX + Math.sin(time * 0.0005 + this.pulseOffset) * 10;
+                this.y = this.baseY + Math.cos(time * 0.0003 + this.pulseOffset) * 10;
+                this.z = this.baseZ + Math.sin(time * 0.0004 + this.pulseOffset) * 5;
+
+                // Distance to focus point
+                const dx = this.x - focusX;
+                const dy = this.y - focusY;
+                this.distanceToFocus = Math.sqrt(dx * dx + dy * dy);
+
+                // Update color based on influences
+                if (this.colorInfluences.length > 0) {
+                    let currentColor = this.baseColor;
+                    let totalStrength = 0;
+
+                    for (let i = this.colorInfluences.length - 1; i >= 0; i--) {
+                        const influence = this.colorInfluences[i];
+                        influence.strength -= influence.decay;
+                        if (influence.strength <= 0) {
+                            this.colorInfluences.splice(i, 1);
+                        } else {
+                            totalStrength += influence.strength;
+                        }
+                    }
+
+                    if (totalStrength > 0) {
+                        this.colorInfluences.forEach(influence => {
+                            const weight = Math.min(influence.strength / totalStrength * 0.6, 0.8);
+                            currentColor = this.mixColors(currentColor, influence.color, weight);
+                        });
+                        this.color = currentColor;
+                        this.size = this.baseSize * (1 + Math.min(totalStrength, 1) * 0.3);
+                    } else {
+                        this.color = this.baseColor;
+                        this.size = this.baseSize;
+                    }
+                } else {
+                    this.color = this.baseColor;
+                    this.size = this.baseSize;
+                }
+            }
+
+            draw(ctx, time, focusX, focusY) {
+                const scale = 1 + (this.z / 800);
+                const screenX = this.x * scale + canvas.width / (2 * dpr);
+                const screenY = this.y * scale + canvas.height / (2 * dpr);
+
+                const pulse = Math.sin(time * 0.002 + this.pulseOffset) * 0.3 + 0.7;
+                const focusIntensity = Math.max(0, 1 - this.distanceToFocus / 300);
+                const depthOpacity = 0.4 + (this.z + 100) / 300;
+                const opacity = depthOpacity * pulse * (0.6 + focusIntensity * 0.4);
+
+                if (focusIntensity > 0.3) {
+                    ctx.shadowBlur = 15 * focusIntensity;
+                    ctx.shadowColor = this.color;
+                } else {
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = this.color;
+                }
+
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = opacity;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, this.size * scale, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
+            }
+
+            getScreenPos(scale) {
+                return {
+                    x: this.x * scale + canvas.width / (2 * dpr),
+                    y: this.y * scale + canvas.height / (2 * dpr),
+                    scale: 1 + (this.z / 800)
+                };
+            }
+        }
+
+        // Particle class
+        class Particle {
+            constructor(nodeA, nodeB, connection) {
+                this.nodeA = nodeA;
+                this.nodeB = nodeB;
+                this.connection = connection;
+                this.progress = 0;
+                const distanceFactor = Math.min(1, connection.distance / 80);
+                this.speed = (0.004 + Math.random() * 0.006) / (0.5 + distanceFactor);
+                this.color = nodeA.color;
+                this.size = 2 + Math.random() * 2;
+                this.trailLength = 0.12 + Math.random() * 0.08;
+                this.age = 0;
+                this.fadeInDuration = 0.1;
+                this.fadeOutStart = 0.85;
+                this.hasArrived = false;
+            }
+
+            update() {
+                this.progress += this.speed;
+                this.age += this.speed;
+
+                if (!this.hasArrived && this.progress >= 0.95) {
+                    this.hasArrived = true;
+                    const collisionIntensity = this.nodeB.registerArrival(this.color);
+                    this.nodeB.addColorInfluence(this.color, 0.8);
+                    ripples.push(new Ripple(this.nodeB, this.color, collisionIntensity));
+                    if (collisionIntensity > 1.5) {
+                        ripples.push(new Ripple(this.nodeB, this.color, collisionIntensity * 0.7));
+                    }
+                }
+
+                return this.progress < 1.0;
+            }
+
+            getAlpha() {
+                if (this.progress < this.fadeInDuration) {
+                    return this.progress / this.fadeInDuration;
+                }
+                if (this.progress > this.fadeOutStart) {
+                    return 1 - ((this.progress - this.fadeOutStart) / (1 - this.fadeOutStart));
+                }
+                return 1.0;
+            }
+
+            getEnergy() {
+                const midpoint = 0.5;
+                const distanceFromMid = Math.abs(this.progress - midpoint);
+                return 1 - (distanceFromMid * 1.2);
+            }
+
+            draw(ctx) {
+                const alpha = this.getAlpha();
+                const energy = this.getEnergy();
+
+                const scaleA = 1 + (this.nodeA.z / 800);
+                const scaleB = 1 + (this.nodeB.z / 800);
+
+                const posA = this.nodeA.getScreenPos(scaleA);
+                const posB = this.nodeB.getScreenPos(scaleB);
+
+                const x = posA.x + (posB.x - posA.x) * this.progress;
+                const y = posA.y + (posB.y - posA.y) * this.progress;
+
+                // Draw trail
+                const trailStart = Math.max(0, this.progress - this.trailLength);
+                const trailX = posA.x + (posB.x - posA.x) * trailStart;
+                const trailY = posA.y + (posB.y - posA.y) * trailStart;
+
+                const gradient = ctx.createLinearGradient(trailX, trailY, x, y);
+                const trailAlpha = Math.round(alpha * 204).toString(16).padStart(2, '0');
+
+                const sourceColor = this.nodeA.baseColor;
+                const destColor = this.nodeB.baseColor;
+                const currentColor = this.nodeA.mixColors(sourceColor, destColor, this.progress);
+
+                gradient.addColorStop(0, currentColor + '00');
+                gradient.addColorStop(0.5, currentColor + Math.round(alpha * 153).toString(16).padStart(2, '0'));
+                gradient.addColorStop(1, currentColor + trailAlpha);
+
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = this.size * 0.8 * (0.8 + energy * 0.4);
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(trailX, trailY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                // Energy-based glow
+                const glowIntensity = 15 + energy * 25;
+                ctx.shadowBlur = glowIntensity;
+                ctx.shadowColor = currentColor;
+
+                // Outer glow
+                ctx.globalAlpha = alpha * (0.4 + energy * 0.3);
+                ctx.fillStyle = currentColor;
+                ctx.beginPath();
+                const outerSize = this.size * (2 + energy * 0.8);
+                ctx.arc(x, y, outerSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Middle glow
+                ctx.shadowBlur = glowIntensity * 0.6;
+                ctx.globalAlpha = alpha * (0.6 + energy * 0.3);
+                ctx.fillStyle = currentColor;
+                ctx.beginPath();
+                ctx.arc(x, y, this.size * (1.2 + energy * 0.3), 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bright core
+                ctx.shadowBlur = 8 + energy * 6;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(x, y, this.size * (0.7 + energy * 0.3), 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Ripple class
+        class Ripple {
+            constructor(node, color, intensity = 1.0) {
+                this.node = node;
+                this.color = color;
+                this.intensity = intensity;
+                this.radius = 0;
+                this.maxRadius = 30 + intensity * 20;
+                this.speed = 1.5 + intensity * 0.5;
+                this.opacity = 0.8 * intensity;
+                this.lineWidth = 2 + intensity;
+            }
+
+            update() {
+                this.radius += this.speed;
+                this.opacity *= 0.95;
+                return this.opacity > 0.05 && this.radius < this.maxRadius;
+            }
+
+            draw(ctx) {
+                const scale = 1 + (this.node.z / 800);
+                const pos = this.node.getScreenPos(scale);
+
+                ctx.strokeStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.lineWidth = this.lineWidth;
+                ctx.shadowBlur = 10 * this.intensity;
+                ctx.shadowColor = this.color;
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, this.radius * scale, 0, Math.PI * 2);
+                ctx.stroke();
+
+                if (this.radius < this.maxRadius * 0.5) {
+                    ctx.globalAlpha = this.opacity * 0.5;
+                    ctx.lineWidth = this.lineWidth * 1.5;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, this.radius * scale * 0.7, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Global state
+        const nodes = [];
+        const particles = [];
+        const ripples = [];
+        const maxParticles = 50;
+        const spawnInterval = 60;
+        let lastSpawnTime = 0;
+        let contexts = [];
+        let focusAngle = 0;
+        let focusRadius = 200;
+        let frameCount = 0;
+        let lastFpsUpdate = Date.now();
+
+        // K-means clustering for colors
+        function kMeansClustering(points, k = 8, maxIterations = 20) {
+            const centroids = [];
+            const usedIndices = new Set();
+            while (centroids.length < k) {
+                const idx = Math.floor(Math.random() * points.length);
+                if (!usedIndices.has(idx)) {
+                    centroids.push([...points[idx]]);
+                    usedIndices.add(idx);
+                }
+            }
+
+            let assignments = new Array(points.length).fill(0);
+
+            for (let iter = 0; iter < maxIterations; iter++) {
+                for (let i = 0; i < points.length; i++) {
+                    let minDist = Infinity;
+                    let bestCluster = 0;
+
+                    for (let j = 0; j < k; j++) {
+                        const dist = Math.sqrt(
+                            Math.pow(points[i][0] - centroids[j][0], 2) +
+                            Math.pow(points[i][1] - centroids[j][1], 2) +
+                            Math.pow(points[i][2] - centroids[j][2], 2)
+                        );
+
+                        if (dist < minDist) {
+                            minDist = dist;
+                            bestCluster = j;
+                        }
+                    }
+
+                    assignments[i] = bestCluster;
+                }
+
+                const newCentroids = Array(k).fill(null).map(() => [0, 0, 0]);
+                const counts = new Array(k).fill(0);
+
+                for (let i = 0; i < points.length; i++) {
+                    const cluster = assignments[i];
+                    newCentroids[cluster][0] += points[i][0];
+                    newCentroids[cluster][1] += points[i][1];
+                    newCentroids[cluster][2] += points[i][2];
+                    counts[cluster]++;
+                }
+
+                for (let j = 0; j < k; j++) {
+                    if (counts[j] > 0) {
+                        centroids[j][0] = newCentroids[j][0] / counts[j];
+                        centroids[j][1] = newCentroids[j][1] / counts[j];
+                        centroids[j][2] = newCentroids[j][2] / counts[j];
+                    }
+                }
+            }
+
+            return assignments;
+        }
+
+        // Load and initialize
+        async function loadContextData() {
+            const loadingProgress = document.querySelector('.loading-progress');
+
+            try {
+                loadingProgress.textContent = 'Fetching data...';
+                const response = await fetch('./data/contexts.json');
+                const data = await response.json();
+
+                loadingProgress.textContent = 'Processing contexts...';
+                contexts = data.contexts;
+
+                // Update UI
+                document.getElementById('context-count').textContent = data.metadata.total_contexts.toLocaleString();
+                document.getElementById('subtitle').textContent =
+                    `${data.metadata.total_contexts.toLocaleString()} contexts • ${data.metadata.projects.length} projects • Living knowledge graph`;
+
+                // Cluster and create nodes
+                loadingProgress.textContent = 'Clustering...';
+                const positions = contexts.map(ctx => [ctx.vector_x, ctx.vector_y, ctx.vector_z]);
+                const clusters = kMeansClustering(positions, 8);
+
+                loadingProgress.textContent = 'Creating nodes...';
+                const scale = 50; // Scale UMAP coords to screen space
+                contexts.forEach((ctx, i) => {
+                    const x = ctx.vector_x * scale;
+                    const y = ctx.vector_y * scale;
+                    const z = ctx.vector_z * scale;
+                    const color = colors[clusters[i] % colors.length];
+                    nodes.push(new Node(x, y, z, color, clusters[i]));
+                });
+
+                // Build connections
+                loadingProgress.textContent = 'Building connections...';
+                const maxDistance = 80;
+                let connectionCount = 0;
+
+                nodes.forEach((node, i) => {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const other = nodes[j];
+                        const dx = node.baseX - other.baseX;
+                        const dy = node.baseY - other.baseY;
+                        const dz = (node.baseZ - other.baseZ) * 0.5;
+                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                        if (distance < maxDistance) {
+                            node.connections.push({
+                                node: other,
+                                distance: distance,
+                                baseOpacity: Math.max(0, 1 - distance / maxDistance) * 0.3
+                            });
+                            connectionCount++;
+                        }
+                    }
+                });
+
+                document.getElementById('connection-count').textContent = connectionCount;
+
+                return data;
+            } catch (error) {
+                console.error('Error loading context data:', error);
+                loadingProgress.textContent = 'Error loading data';
+                throw error;
+            }
+        }
+
+        function spawnParticle() {
+            if (particles.length >= maxParticles) return;
+
+            const nodesWithConnections = nodes.filter(n => n.connections.length > 0);
+            if (nodesWithConnections.length === 0) return;
+
+            const sourceNode = nodesWithConnections[Math.floor(Math.random() * nodesWithConnections.length)];
+            if (sourceNode.connections.length === 0) return;
+
+            const connection = sourceNode.connections[Math.floor(Math.random() * sourceNode.connections.length)];
+            particles.push(new Particle(sourceNode, connection.node, connection));
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const alive = particles[i].update();
+                if (!alive) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            const now = Date.now();
+            if (now - lastSpawnTime > spawnInterval) {
+                if (Math.random() < 0.9) {
+                    spawnParticle();
+                }
+                lastSpawnTime = now;
+            }
+
+            document.getElementById('particle-count').textContent = particles.length;
+        }
+
+        function updateRipples() {
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const alive = ripples[i].update();
+                if (!alive) {
+                    ripples.splice(i, 1);
+                }
+            }
+        }
+
+        // Animation loop
+        let time = 0;
+        function animate() {
+            time = Date.now();
+
+            // Clear canvas
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+            // Update focus point
+            focusAngle += 0.0003;
+            const focusX = Math.sin(focusAngle * 2) * focusRadius;
+            const focusY = Math.sin(focusAngle) * focusRadius * 0.8;
+
+            // Sort nodes by depth
+            nodes.sort((a, b) => a.z - b.z);
+
+            // Update nodes
+            nodes.forEach(node => node.update(time, focusX, focusY));
+
+            // Update particles and ripples
+            updateParticles();
+            updateRipples();
+
+            // Draw connections
+            nodes.forEach(node => {
+                const posA = node.getScreenPos(1 + (node.z / 800));
+
+                node.connections.forEach(conn => {
+                    const posB = conn.node.getScreenPos(1 + (conn.node.z / 800));
+
+                    const avgDistToFocus = (node.distanceToFocus + conn.node.distanceToFocus) / 2;
+                    const focusBoost = Math.max(0, 1 - avgDistToFocus / 300) * 0.5;
+                    const opacity = conn.baseOpacity + focusBoost;
+                    const pulse = Math.sin(time * 0.001 + conn.distance) * 0.2 + 0.8;
+
+                    ctx.globalAlpha = opacity * pulse;
+                    ctx.strokeStyle = node.color;
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(posA.x, posA.y);
+                    ctx.lineTo(posB.x, posB.y);
+                    ctx.stroke();
+                });
+            });
+
+            ctx.globalAlpha = 1;
+
+            // Draw particles
+            particles.forEach(particle => particle.draw(ctx));
+
+            // Draw nodes
+            nodes.forEach(node => node.draw(ctx, time, focusX, focusY));
+
+            // Draw ripples
+            ripples.forEach(ripple => ripple.draw(ctx));
+
+            // FPS counter
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsUpdate >= 1000) {
+                document.getElementById('fps-count').textContent = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize
+        async function init() {
+            try {
+                await loadContextData();
+                document.getElementById('loading').classList.add('hidden');
+                animate();
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

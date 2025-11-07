@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HUD Style Test</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 1920px;
+        height: 1080px;
+        background: #000;
+        font-family: "JetBrains Mono", monospace;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Container for all tiles */
+      .hud-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -60%);
+        width: 900px;
+      }
+
+      /* Bottom row container for two tiles */
+      .bottom-row {
+        display: flex;
+        gap: 5px;
+        margin-top: 5px;
+      }
+
+      /* Bottom left tile - right edge aligns with center of top tile */
+      .bottom-left-tile {
+        width: 447.5px;
+        min-height: 150px;
+      }
+
+      /* Bottom right tile - left edge aligns with center of top tile */
+      .bottom-right-tile {
+        width: 447.5px;
+        min-height: 150px;
+      }
+
+      /* Social info styling */
+      .social-info {
+        padding: 15px 10px;
+        text-align: left;
+      }
+
+      .social-name {
+        font-size: 24px;
+        font-weight: 600;
+        color: #6cbaef;
+        letter-spacing: 2px;
+        margin-bottom: 10px;
+        text-shadow:
+          0 0 4px rgba(108, 186, 239, 0.5),
+          0 0 8px rgba(108, 186, 239, 0.3);
+      }
+
+      .social-link {
+        font-size: 14px;
+        font-weight: 400;
+        color: #d0e0f0;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        line-height: 1.5;
+        text-shadow: 0 0 3px rgba(208, 224, 240, 0.3);
+      }
+
+      .social-link .platform {
+        color: #6cbaef;
+        font-weight: 500;
+      }
+
+      /* Tech stack styling */
+      .tech-stack {
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+      }
+
+      .tech-list {
+        text-align: left;
+        flex: 0 0 auto;
+        margin-right: auto;
+      }
+
+      .tech-item {
+        font-size: 20px;
+        font-weight: 500;
+        color: #d0e0f0;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        text-shadow:
+          0 0 3px rgba(208, 224, 240, 0.3);
+      }
+
+      /* Status indicator blocks */
+      .status-indicator {
+        display: flex;
+        gap: 8px;
+        flex-direction: column;
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
+
+      .indicator-block {
+        width: 60px;
+        height: 16px;
+        background: #6cbaef;
+        border: 1px solid rgba(108, 186, 239, 1);
+        border-radius: 2px;
+        box-shadow:
+          0 0 15px rgba(108, 186, 239, 0.9),
+          0 0 25px rgba(108, 186, 239, 0.6),
+          inset 0 0 8px rgba(108, 186, 239, 0.7);
+        animation: indicator-pulse 2s ease-in-out infinite;
+      }
+
+      .indicator-block:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      .indicator-block:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .indicator-block:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      .indicator-block:nth-child(4) {
+        animation-delay: 0.6s;
+      }
+
+      @keyframes indicator-pulse {
+        0%, 100% {
+          box-shadow:
+            0 0 15px rgba(108, 186, 239, 0.9),
+            0 0 25px rgba(108, 186, 239, 0.6),
+            inset 0 0 8px rgba(108, 186, 239, 0.7);
+          background: #6cbaef;
+        }
+        50% {
+          box-shadow:
+            0 0 20px rgba(108, 186, 239, 1),
+            0 0 35px rgba(108, 186, 239, 0.8),
+            inset 0 0 12px rgba(108, 186, 239, 0.9);
+          background: rgba(108, 186, 239, 1);
+        }
+      }
+
+      /* Clean HUD tile - command center aesthetic */
+      .hud-tile {
+        width: 100%;
+        padding: 40px 50px;
+        background: rgba(40, 50, 60, 0.45);
+        border-left: 4px solid rgba(108, 186, 239, 0.6);
+        border-bottom: 0.05px solid rgba(108, 186, 239, 0.6);
+        border-top: 0px solid rgba(108, 186, 239, 0.1);
+        border-right: 0px solid rgba(108, 186, 239, 0.1);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        backdrop-filter: blur(12px);
+        box-shadow:
+          inset 0 0 15px rgba(108, 186, 239, 0.05),
+          inset 2px 2px 4px rgba(255, 255, 255, 0.03),
+          inset -2px -2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Left light bar - sits on top of left border */
+      .hud-tile::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: rgba(108, 186, 239, 0.8);
+        pointer-events: none;
+        box-shadow:
+          -16px 0 40px rgba(108, 186, 239, 0.7),
+          -10px 0 24px rgba(108, 186, 239, 0.85),
+          -5px 0 12px rgba(108, 186, 239, 0.95),
+          -2px 0 6px rgba(108, 186, 239, 1);
+        animation: light-pulse 3s ease-in-out infinite;
+      }
+
+      @keyframes light-pulse {
+        0%,
+        100% {
+          background: rgba(108, 186, 239, 0.8);
+          box-shadow:
+            -16px 0 40px rgba(108, 186, 239, 0.7),
+            -10px 0 24px rgba(108, 186, 239, 0.85),
+            -5px 0 12px rgba(108, 186, 239, 0.95),
+            -2px 0 6px rgba(108, 186, 239, 1);
+        }
+        50% {
+          background: rgba(108, 186, 239, 1);
+          box-shadow:
+            -20px 0 50px rgba(108, 186, 239, 0.9),
+            -12px 0 30px rgba(108, 186, 239, 1),
+            -6px 0 16px rgba(108, 186, 239, 1),
+            -3px 0 8px rgba(108, 186, 239, 1);
+        }
+      }
+
+      /* Corner accent lines - top left */
+      /*
+      init.hud-tile::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 20px;
+        height: 20px;
+        border-top: 1px solid rgba(108, 186, 239, 0.8);
+        border-left: 1px solid rgba(108, 186, 239, 0.8);
+      }
+      */
+      /* Corner accent lines - bottom right */
+      /*
+      .hud-tile::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 30px;
+        height: 30px;
+        border-bottom: 2px solid rgba(108, 186, 239, 0.8);
+        border-right: 2px solid rgba(108, 186, 239, 0.8);
+      }
+      */
+
+      /* Inset display area around text */
+      .display-area {
+        position: relative;
+        padding: 0.3px 0.3px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(40, 50, 60, 0.4);
+        border-left: 2px solid rgba(108, 186, 239, 0.6);
+        background: #22272e;
+        box-shadow:
+          -4px 0 8px rgba(108, 186, 239, 0.3),
+          inset 0 2px 4px rgba(0, 0, 0, 0.3),
+          inset 0 -1px 2px rgba(255, 255, 255, 0.02);
+      }
+
+      /* Main text */
+      .hud-text {
+        font-size: 48px;
+        font-weight: 600;
+        color: #d0e0f0;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        text-shadow:
+          0 0 4px rgba(208, 224, 240, 0.4),
+          0 0 10px rgba(108, 186, 239, 0.3),
+          0 0 15px rgba(108, 186, 239, 0.15);
+      }
+
+      /* Subtitle/label */
+      .hud-label {
+        font-size: 14px;
+        font-weight: 400;
+        color: #6cbaef;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 15px;
+        text-shadow:
+          0 0 3px rgba(108, 186, 239, 0.5),
+          0 0 6px rgba(108, 186, 239, 0.3);
+      }
+
+      /* Dot matrix progress bar container */
+      .progress-container {
+        display: flex;
+        gap: 2px;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 700px;
+      }
+
+      /* Each block segment - 2x4 grid of dots */
+      .progress-block {
+        display: grid;
+        grid-template-columns: repeat(2, 5px);
+        grid-template-rows: repeat(4, 5px);
+        gap: 1px;
+      }
+
+      /* Individual dot */
+      .dot {
+        width: 5px;
+        height: 5px;
+        background: #6cbaef;
+        border-radius: 50%;
+        box-shadow:
+          0 0 6px rgba(108, 186, 239, 0.8),
+          0 0 3px rgba(108, 186, 239, 0.6);
+      }
+
+      /* Inactive dots (dim) */
+      .progress-block.inactive .dot {
+        background: rgba(108, 186, 239, 0.15);
+        box-shadow: none;
+      }
+
+      /* Animate blocks lighting up progressively */
+      .progress-block:nth-child(1) {
+        animation: block-light 2s ease-in-out 0s infinite;
+      }
+      .progress-block:nth-child(2) {
+        animation: block-light 2s ease-in-out 0.08s infinite;
+      }
+      .progress-block:nth-child(3) {
+        animation: block-light 2s ease-in-out 0.16s infinite;
+      }
+      .progress-block:nth-child(4) {
+        animation: block-light 2s ease-in-out 0.24s infinite;
+      }
+      .progress-block:nth-child(5) {
+        animation: block-light 2s ease-in-out 0.32s infinite;
+      }
+      .progress-block:nth-child(6) {
+        animation: block-light 2s ease-in-out 0.4s infinite;
+      }
+      .progress-block:nth-child(7) {
+        animation: block-light 2s ease-in-out 0.48s infinite;
+      }
+      .progress-block:nth-child(8) {
+        animation: block-light 2s ease-in-out 0.56s infinite;
+      }
+      .progress-block:nth-child(9) {
+        animation: block-light 2s ease-in-out 0.64s infinite;
+      }
+      .progress-block:nth-child(10) {
+        animation: block-light 2s ease-in-out 0.72s infinite;
+      }
+      .progress-block:nth-child(11) {
+        animation: block-light 2s ease-in-out 0.8s infinite;
+      }
+      .progress-block:nth-child(12) {
+        animation: block-light 2s ease-in-out 0.88s infinite;
+      }
+      .progress-block:nth-child(13) {
+        animation: block-light 2s ease-in-out 0.96s infinite;
+      }
+      .progress-block:nth-child(14) {
+        animation: block-light 2s ease-in-out 1.04s infinite;
+      }
+      .progress-block:nth-child(15) {
+        animation: block-light 2s ease-in-out 1.12s infinite;
+      }
+      .progress-block:nth-child(16) {
+        animation: block-light 2s ease-in-out 1.2s infinite;
+      }
+      .progress-block:nth-child(17) {
+        animation: block-light 2s ease-in-out 1.28s infinite;
+      }
+      .progress-block:nth-child(18) {
+        animation: block-light 2s ease-in-out 1.36s infinite;
+      }
+      .progress-block:nth-child(19) {
+        animation: block-light 2s ease-in-out 1.44s infinite;
+      }
+      .progress-block:nth-child(20) {
+        animation: block-light 2s ease-in-out 1.52s infinite;
+      }
+      .progress-block:nth-child(21) {
+        animation: block-light 2s ease-in-out 1.6s infinite;
+      }
+      .progress-block:nth-child(22) {
+        animation: block-light 2s ease-in-out 1.68s infinite;
+      }
+      .progress-block:nth-child(23) {
+        animation: block-light 2s ease-in-out 1.76s infinite;
+      }
+      .progress-block:nth-child(24) {
+        animation: block-light 2s ease-in-out 1.84s infinite;
+      }
+      .progress-block:nth-child(25) {
+        animation: block-light 2s ease-in-out 1.92s infinite;
+      }
+      .progress-block:nth-child(26) {
+        animation: block-light 2s ease-in-out 2s infinite;
+      }
+      .progress-block:nth-child(27) {
+        animation: block-light 2s ease-in-out 2.08s infinite;
+      }
+      .progress-block:nth-child(28) {
+        animation: block-light 2s ease-in-out 2.16s infinite;
+      }
+      .progress-block:nth-child(29) {
+        animation: block-light 2s ease-in-out 2.24s infinite;
+      }
+      .progress-block:nth-child(30) {
+        animation: block-light 2s ease-in-out 2.32s infinite;
+      }
+      .progress-block:nth-child(31) {
+        animation: block-light 2s ease-in-out 2.4s infinite;
+      }
+      .progress-block:nth-child(32) {
+        animation: block-light 2s ease-in-out 2.48s infinite;
+      }
+      .progress-block:nth-child(33) {
+        animation: block-light 2s ease-in-out 2.56s infinite;
+      }
+      .progress-block:nth-child(34) {
+        animation: block-light 2s ease-in-out 2.64s infinite;
+      }
+      .progress-block:nth-child(35) {
+        animation: block-light 2s ease-in-out 2.72s infinite;
+      }
+      .progress-block:nth-child(36) {
+        animation: block-light 2s ease-in-out 2.8s infinite;
+      }
+      .progress-block:nth-child(37) {
+        animation: block-light 2s ease-in-out 2.88s infinite;
+      }
+      .progress-block:nth-child(38) {
+        animation: block-light 2s ease-in-out 2.96s infinite;
+      }
+      .progress-block:nth-child(39) {
+        animation: block-light 2s ease-in-out 3.04s infinite;
+      }
+      .progress-block:nth-child(40) {
+        animation: block-light 2s ease-in-out 3.12s infinite;
+      }
+
+      @keyframes block-light {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hud-container">
+      <!-- Top tile - original -->
+      <div class="hud-tile">
+        <div class="display-area">
+          <div class="hud-text">Stream Starting Soon</div>
+        </div>
+        <div class="hud-label">Initializing Systems</div>
+        <div class="progress-container">
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="progress-block">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom row - two tiles -->
+      <div class="bottom-row">
+        <!-- Bottom left tile - social info -->
+        <div class="hud-tile bottom-left-tile">
+          <div class="social-info">
+            <div class="social-name">RidgetopAI</div>
+            <div class="social-link">
+              <span class="platform">X</span> @ridgetopai
+            </div>
+            <div class="social-link">
+              <span class="platform">Youtube</span>
+              https://youtube.com/@ridgetopai
+            </div>
+            <div class="social-link">
+              <span class="platform">Twitch</span>
+              https://www.twitch.tv/ridgetopai
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom right tile - tech stack -->
+        <div class="hud-tile bottom-right-tile">
+          <div class="tech-stack">
+            <div class="tech-list">
+              <div class="tech-item">Models</div>
+              <div class="tech-item">Ampcode</div>
+              <div class="tech-item">Claude Code</div>
+            </div>
+            <div class="status-indicator">
+              <div class="indicator-block"></div>
+              <div class="indicator-block"></div>
+              <div class="indicator-block"></div>
+              <div class="indicator-block"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

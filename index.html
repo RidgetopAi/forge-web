@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Forge Live - Knowledge Graph Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000000;
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            color: #ffffff;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(0, 212, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .loading-progress {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00f5d4 0%, #00d4ff 25%, #0ea5e9 50%, #7c3aed 75%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #64748b;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+        }
+
+        .stats {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: #64748b;
+            backdrop-filter: blur(15px);
+            min-width: 200px;
+        }
+
+        .stats .stat-row {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .stats .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stats .stat-label {
+            color: #64748b;
+        }
+
+        .stats .stat-value {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            z-index: 10;
+        }
+
+        .controls button {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0 5px;
+        }
+
+        .controls button:hover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+        }
+
+        .controls button.active {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading Knowledge Graph</div>
+        <div class="loading-progress">Initializing...</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="overlay">
+        <h1 class="title">The Forge Live</h1>
+        <p class="subtitle" id="subtitle">Loading...</p>
+    </div>
+
+    <div class="controls">
+        <button id="auto-rotate-btn" class="active">Auto Rotate</button>
+        <button id="reset-camera-btn">Reset Camera</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-row">
+            <span class="stat-label">Contexts:</span>
+            <span class="stat-value" id="context-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Projects:</span>
+            <span class="stat-value" id="project-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Connections:</span>
+            <span class="stat-value" id="connection-count">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">FPS:</span>
+            <span class="stat-value" id="fps-count">60</span>
+        </div>
+    </div>
+
+    <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1/dist/es-module-shims.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Global state
+        let scene, camera, renderer, controls, composer;
+        let instancedMesh, connectionLines;
+        let contexts = [];
+        let autoRotate = true;
+        let frameCount = 0;
+        let lastFpsUpdate = Date.now();
+
+        // Initialize Three.js scene
+        function initScene() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.Fog(0x000000, 50, 100);  // Reduced fog for better visibility
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 0, 35);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                powerPreference: 'high-performance'
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 80;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.3;
+
+            // Lighting - balanced for definition
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const pointLight1 = new THREE.PointLight(0x00d4ff, 0.8, 100);
+            pointLight1.position.set(20, 20, 20);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xec4899, 0.8, 100);
+            pointLight2.position.set(-20, -20, -20);
+            scene.add(pointLight2);
+
+            // Post-processing
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.8,  // strength - subtle glow
+                0.5,  // radius - focused glow
+                0.6   // threshold - higher = only bright things glow
+            );
+            composer.addPass(bloomPass);
+
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Load and process context data
+        async function loadContextData() {
+            const loadingProgress = document.querySelector('.loading-progress');
+
+            try {
+                loadingProgress.textContent = 'Fetching data...';
+                const response = await fetch('./data/contexts.json');
+                const data = await response.json();
+
+                loadingProgress.textContent = 'Processing contexts...';
+                contexts = data.contexts;
+
+                // Update UI
+                document.getElementById('context-count').textContent = data.metadata.total_contexts.toLocaleString();
+                document.getElementById('project-count').textContent = data.metadata.projects.length;
+                document.getElementById('subtitle').textContent =
+                    `${data.metadata.total_contexts.toLocaleString()} contexts • ${data.metadata.projects.length} projects • Living knowledge graph`;
+
+                return data;
+            } catch (error) {
+                console.error('Error loading context data:', error);
+                loadingProgress.textContent = 'Error loading data';
+                throw error;
+            }
+        }
+
+        // Simple k-means clustering for color assignment
+        function kMeansClustering(points, k = 8, maxIterations = 20) {
+            // Initialize centroids randomly
+            const centroids = [];
+            const usedIndices = new Set();
+            while (centroids.length < k) {
+                const idx = Math.floor(Math.random() * points.length);
+                if (!usedIndices.has(idx)) {
+                    centroids.push([...points[idx]]);
+                    usedIndices.add(idx);
+                }
+            }
+
+            let assignments = new Array(points.length).fill(0);
+
+            for (let iter = 0; iter < maxIterations; iter++) {
+                // Assign points to nearest centroid
+                for (let i = 0; i < points.length; i++) {
+                    let minDist = Infinity;
+                    let bestCluster = 0;
+
+                    for (let j = 0; j < k; j++) {
+                        const dist = Math.sqrt(
+                            Math.pow(points[i][0] - centroids[j][0], 2) +
+                            Math.pow(points[i][1] - centroids[j][1], 2) +
+                            Math.pow(points[i][2] - centroids[j][2], 2)
+                        );
+
+                        if (dist < minDist) {
+                            minDist = dist;
+                            bestCluster = j;
+                        }
+                    }
+
+                    assignments[i] = bestCluster;
+                }
+
+                // Update centroids
+                const newCentroids = Array(k).fill(null).map(() => [0, 0, 0]);
+                const counts = new Array(k).fill(0);
+
+                for (let i = 0; i < points.length; i++) {
+                    const cluster = assignments[i];
+                    newCentroids[cluster][0] += points[i][0];
+                    newCentroids[cluster][1] += points[i][1];
+                    newCentroids[cluster][2] += points[i][2];
+                    counts[cluster]++;
+                }
+
+                for (let j = 0; j < k; j++) {
+                    if (counts[j] > 0) {
+                        centroids[j][0] = newCentroids[j][0] / counts[j];
+                        centroids[j][1] = newCentroids[j][1] / counts[j];
+                        centroids[j][2] = newCentroids[j][2] / counts[j];
+                    }
+                }
+            }
+
+            return assignments;
+        }
+
+        // Create color palette
+        function getColorPalette() {
+            return [
+                new THREE.Color(0x00d4ff), // cyan
+                new THREE.Color(0x10b981), // green
+                new THREE.Color(0xec4899), // pink
+                new THREE.Color(0xf59e0b), // orange
+                new THREE.Color(0x7c3aed), // purple
+                new THREE.Color(0x00f5d4), // teal
+                new THREE.Color(0x0ea5e9), // blue
+                new THREE.Color(0xfbbf24), // yellow
+            ];
+        }
+
+        // Create instanced mesh for nodes
+        function createInstancedNodes(data) {
+            const loadingProgress = document.querySelector('.loading-progress');
+            loadingProgress.textContent = 'Clustering positions...';
+
+            // Get positions for clustering
+            const positions = contexts.map(ctx => [ctx.vector_x, ctx.vector_y, ctx.vector_z]);
+
+            // Cluster using k-means
+            const clusters = kMeansClustering(positions, 8);
+            const colors = getColorPalette();
+
+            loadingProgress.textContent = 'Creating nodes...';
+
+            // Create instanced mesh with size variation
+            const geometry = new THREE.SphereGeometry(0.18, 20, 20);
+
+            // Use MeshStandardMaterial - let instance colors shine
+            const material = new THREE.MeshStandardMaterial({
+                vertexColors: false,  // We use instance colors instead
+                metalness: 0.3,
+                roughness: 0.5,
+                toneMapped: false
+            });
+
+            instancedMesh = new THREE.InstancedMesh(geometry, material, contexts.length);
+            instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+                new Float32Array(contexts.length * 3),
+                3
+            );
+
+            const matrix = new THREE.Matrix4();
+            const color = new THREE.Color();
+
+            contexts.forEach((ctx, i) => {
+                // Position with slight size variation
+                const scale = 0.9 + Math.random() * 0.3;  // 0.9 to 1.2 scale
+                matrix.identity();
+                matrix.makeScale(scale, scale, scale);
+                matrix.setPosition(ctx.vector_x, ctx.vector_y, ctx.vector_z);
+                instancedMesh.setMatrixAt(i, matrix);
+
+                // Color based on cluster - VIVID and SATURATED
+                const clusterColor = colors[clusters[i] % colors.length].clone();
+                // Boost saturation for vibrant appearance
+                const hsl = { h: 0, s: 0, l: 0 };
+                clusterColor.getHSL(hsl);
+                clusterColor.setHSL(hsl.h, 1.0, 0.6);  // Full saturation, good lightness
+                instancedMesh.setColorAt(i, clusterColor);
+            });
+
+            // Update the instance attributes
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            instancedMesh.instanceColor.needsUpdate = true;
+
+            scene.add(instancedMesh);
+            return clusters;
+        }
+
+        // Calculate cosine similarity
+        function cosineSimilarity(a, b) {
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+
+            for (let i = 0; i < a.length && i < b.length; i++) {
+                dotProduct += a[i] * b[i];
+                normA += a[i] * a[i];
+                normB += b[i] * b[i];
+            }
+
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+
+        // Create connection lines (hybrid approach)
+        function createConnections(clusters) {
+            const loadingProgress = document.querySelector('.loading-progress');
+            loadingProgress.textContent = 'Building connections...';
+
+            const connections = [];
+            const projectGroups = new Map();
+
+            // Group by project
+            contexts.forEach((ctx, i) => {
+                if (!projectGroups.has(ctx.project_id)) {
+                    projectGroups.set(ctx.project_id, []);
+                }
+                projectGroups.get(ctx.project_id).push(i);
+            });
+
+            // For each project, connect k-nearest neighbors
+            projectGroups.forEach(indices => {
+                if (indices.length < 2) return;
+
+                indices.forEach(i => {
+                    const pos1 = [contexts[i].vector_x, contexts[i].vector_y, contexts[i].vector_z];
+
+                    // Find nearest neighbors in same project
+                    const neighbors = indices
+                        .filter(j => j !== i)
+                        .map(j => {
+                            const pos2 = [contexts[j].vector_x, contexts[j].vector_y, contexts[j].vector_z];
+                            const dist = Math.sqrt(
+                                Math.pow(pos1[0] - pos2[0], 2) +
+                                Math.pow(pos1[1] - pos2[1], 2) +
+                                Math.pow(pos1[2] - pos2[2], 2)
+                            );
+                            return { index: j, dist };
+                        })
+                        .sort((a, b) => a.dist - b.dist)
+                        .slice(0, 3); // 3 nearest neighbors
+
+                    neighbors.forEach(({ index: j, dist }) => {
+                        if (dist < 5) { // Only connect if reasonably close
+                            connections.push({ from: i, to: j, strength: 1 - (dist / 5) });
+                        }
+                    });
+                });
+            });
+
+            // Create line geometry
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(connections.length * 6);
+            const colors = new Float32Array(connections.length * 6);
+            const baseColor = new THREE.Color(0x00d4ff);
+
+            connections.forEach((conn, i) => {
+                const ctx1 = contexts[conn.from];
+                const ctx2 = contexts[conn.to];
+
+                positions[i * 6 + 0] = ctx1.vector_x;
+                positions[i * 6 + 1] = ctx1.vector_y;
+                positions[i * 6 + 2] = ctx1.vector_z;
+                positions[i * 6 + 3] = ctx2.vector_x;
+                positions[i * 6 + 4] = ctx2.vector_y;
+                positions[i * 6 + 5] = ctx2.vector_z;
+
+                const alpha = conn.strength * 0.5;  // Subtle connections
+                colors[i * 6 + 0] = baseColor.r * alpha;
+                colors[i * 6 + 1] = baseColor.g * alpha;
+                colors[i * 6 + 2] = baseColor.b * alpha;
+                colors[i * 6 + 3] = baseColor.r * alpha;
+                colors[i * 6 + 4] = baseColor.g * alpha;
+                colors[i * 6 + 5] = baseColor.b * alpha;
+            });
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.LineBasicMaterial({
+                vertexColors: true,
+                transparent: false,  // No transparency for brighter lines
+                blending: THREE.AdditiveBlending,
+                toneMapped: false  // Prevent tone mapping from darkening
+            });
+
+            connectionLines = new THREE.LineSegments(geometry, material);
+            scene.add(connectionLines);
+
+            document.getElementById('connection-count').textContent = connections.length.toLocaleString();
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            controls.update();
+            composer.render();
+
+            // FPS counter
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsUpdate >= 1000) {
+                document.getElementById('fps-count').textContent = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+            }
+        }
+
+        // Controls
+        document.getElementById('auto-rotate-btn').addEventListener('click', function() {
+            autoRotate = !autoRotate;
+            controls.autoRotate = autoRotate;
+            this.classList.toggle('active', autoRotate);
+        });
+
+        document.getElementById('reset-camera-btn').addEventListener('click', function() {
+            camera.position.set(0, 0, 35);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        });
+
+        // Initialize application
+        async function init() {
+            try {
+                initScene();
+                const data = await loadContextData();
+                const clusters = createInstancedNodes(data);
+                createConnections(clusters);
+
+                // Hide loading screen
+                document.getElementById('loading').classList.add('hidden');
+
+                // Start animation
+                animate();
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
